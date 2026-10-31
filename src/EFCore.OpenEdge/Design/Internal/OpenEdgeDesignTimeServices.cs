@@ -1,8 +1,7 @@
-﻿using EntityFrameworkCore.OpenEdge.Scaffolding.Internal;
-using EntityFrameworkCore.OpenEdge.Storage.Internal.Mapping;
+﻿using EntityFrameworkCore.OpenEdge.Extensions;
+using EntityFrameworkCore.OpenEdge.Scaffolding.Internal;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Scaffolding;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EntityFrameworkCore.OpenEdge.Design.Internal
@@ -10,11 +9,14 @@ namespace EntityFrameworkCore.OpenEdge.Design.Internal
     public class OpenEdgeDesignTimeServices : IDesignTimeServices
     {
         public void ConfigureDesignTimeServices(IServiceCollection serviceCollection)
-            => serviceCollection
-                .AddSingleton<IRelationalTypeMappingSource, OpenEdgeTypeMappingSource>()
-                .AddSingleton<IDatabaseModelFactory, OpenEdgeDatabaseModelFactory>()
-                .AddSingleton<IProviderConfigurationCodeGenerator, OpenEdgeCodeGenerator>()
-                .AddSingleton<IAnnotationCodeGenerator, OpenEdgeAnnotationCodeGenerator>()
-        ;
+        {
+            serviceCollection.AddEntityFrameworkOpenEdge();
+
+            new EntityFrameworkRelationalDesignServicesBuilder(serviceCollection)
+                .TryAdd<IDatabaseModelFactory, OpenEdgeDatabaseModelFactory>()
+                .TryAdd<IProviderConfigurationCodeGenerator, OpenEdgeCodeGenerator>()
+                .TryAdd<IAnnotationCodeGenerator, OpenEdgeAnnotationCodeGenerator>()
+                .TryAddCoreServices();
+        }
     }
 }
