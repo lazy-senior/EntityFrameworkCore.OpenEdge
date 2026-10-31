@@ -25,39 +25,22 @@ namespace EntityFrameworkCore.OpenEdge.Query.ExpressionVisitors.Internal
         }
 
         /// <summary>
-        /// Main entry point - optimizes the query expression with parameter values
+        /// Main entry point - processes the query expression with parameter values.
+        /// The visitors read parameter values through <see cref="ParametersCacheDecorator"/> only when they
+        /// inline one, which disables caching for exactly those queries.
         /// </summary>
         #nullable enable
-        public override Expression Optimize(Expression queryExpression, IReadOnlyDictionary<string, object?> parametersValues, out bool canCache)
+        public override Expression Process(Expression queryExpression, ParametersCacheDecorator parametersDecorator)
         {
             // First, let the base class do its work (e.g. nullability processing)
-            queryExpression = base.Optimize(queryExpression, parametersValues, out canCache);
-
-            // Store the original query to check if we modified it
-            var originalQuery = queryExpression;
+            queryExpression = base.Process(queryExpression, parametersDecorator);
 
             // Inline OFFSET/FETCH values. We must inline these, because that's what OpenEdge expects... not possible to parameterize.
-            queryExpression = new OffsetValueInliningExpressionVisitor(Dependencies.SqlExpressionFactory, parametersValues).Visit(queryExpression);
-            
-            // If we inlined any OFFSET/FETCH parameters, we CANNOT cache this query
-            // because it now contains hard-coded constants specific to this execution
-            if (!ReferenceEquals(originalQuery, queryExpression))
-            {
-                canCache = false;
-            }
-            
-            // Store the query before boolean conversion to check if it changes
-            var beforeBooleanConversion = queryExpression;
-            
+            queryExpression = new OffsetValueInliningExpressionVisitor(Dependencies.SqlExpressionFactory, parametersDecorator).Visit(queryExpression);
+
             // Convert boolean parameters to integer values for OpenEdge compatibility
-            queryExpression = new BooleanParameterConversionVisitor(Dependencies.SqlExpressionFactory, Dependencies.TypeMappingSource, parametersValues).Visit(queryExpression);
-            
-            // If we converted any boolean parameters, we also cannot cache
-            if (!ReferenceEquals(beforeBooleanConversion, queryExpression))
-            {
-                canCache = false;
-            }
-            
+            queryExpression = new BooleanParameterConversionVisitor(Dependencies.SqlExpressionFactory, Dependencies.TypeMappingSource, parametersDecorator).Visit(queryExpression);
+
             return queryExpression;
         }
 
@@ -69,15 +52,15 @@ namespace EntityFrameworkCore.OpenEdge.Query.ExpressionVisitors.Internal
         {
             private readonly ISqlExpressionFactory _sqlExpressionFactory;
             #nullable enable
-            private readonly IReadOnlyDictionary<string, object?> _parameterValues;
+            private readonly ParametersCacheDecorator _parametersDecorator;
 
 
             public OffsetValueInliningExpressionVisitor(
                 ISqlExpressionFactory sqlExpressionFactory,
-                IReadOnlyDictionary<string, object?> parameterValues)
+                ParametersCacheDecorator parametersDecorator)
             {
                 _sqlExpressionFactory = sqlExpressionFactory;
-                _parameterValues = parameterValues;
+                _parametersDecorator = parametersDecorator;
             }
 
             protected override Expression VisitExtension(Expression extensionExpression)
@@ -171,8 +154,9 @@ namespace EntityFrameworkCore.OpenEdge.Query.ExpressionVisitors.Internal
                     return expression; // Return as-is if it's already a constant or null
                 }
 
-                // Look up the value from the dictionary of parameter values
-                if (_parameterValues.TryGetValue(parameterExpression.Name, out var value))
+                // Look up the value from the dictionary of parameter values.
+                // The inlined constant is specific to this execution, so this also disables caching.
+                if (_parametersDecorator.GetAndDisableCaching().TryGetValue(parameterExpression.Name, out var value))
                 {
                     // Create a new SqlConstantExpression with the value.
                     // The SQL Generator will now see this as a literal to be inlined.
@@ -194,17 +178,17 @@ namespace EntityFrameworkCore.OpenEdge.Query.ExpressionVisitors.Internal
             private readonly ISqlExpressionFactory _sqlExpressionFactory;
             private readonly IRelationalTypeMappingSource _typeMappingSource;
             #nullable enable
-            private readonly IReadOnlyDictionary<string, object?> _parameterValues;
+            private readonly ParametersCacheDecorator _parametersDecorator;
             private readonly RelationalTypeMapping? _intTypeMapping;
 
             public BooleanParameterConversionVisitor(
                 ISqlExpressionFactory sqlExpressionFactory,
                 IRelationalTypeMappingSource typeMappingSource,
-                IReadOnlyDictionary<string, object?> parameterValues)
+                ParametersCacheDecorator parametersDecorator)
             {
                 _sqlExpressionFactory = sqlExpressionFactory;
                 _typeMappingSource = typeMappingSource;
-                _parameterValues = parameterValues;
+                _parametersDecorator = parametersDecorator;
                 _intTypeMapping = _typeMappingSource.FindMapping(typeof(int));
             }
 
@@ -282,10 +266,10 @@ namespace EntityFrameworkCore.OpenEdge.Query.ExpressionVisitors.Internal
             /// </summary>
             private SqlConstantExpression? TryConvertBooleanToInteger(SqlExpression expression)
             {
-                // Handle boolean parameter
+                // Handle boolean parameter. The inlined constant is specific to this execution, so this also disables caching.
                 if (expression is SqlParameterExpression paramExpr)
                 {
-                    if (_parameterValues.TryGetValue(paramExpr.Name, out var value) && value is bool boolValue)
+                    if (_parametersDecorator.GetAndDisableCaching().TryGetValue(paramExpr.Name, out var value) && value is bool boolValue)
                     {
                         return CreateIntegerConstant(boolValue);
                     }

@@ -46,7 +46,7 @@ namespace EFCore.OpenEdge.FunctionalTests.Unit.TypeMapping
                 new object[] { typeof(byte), "tinyint", DbType.Byte },
                 new object[] { typeof(bool), "bit", null },
                 new object[] { typeof(DateTime), "datetime", DbType.DateTime },
-                new object[] { typeof(DateTimeOffset), "datetime-tz", DbType.DateTimeOffset },
+                new object[] { typeof(DateTimeOffset), "datetime-tz", DbType.String },
                 new object[] { typeof(TimeSpan), "time", DbType.Time },
                 new object[] { typeof(decimal), "decimal", null },
                 new object[] { typeof(double), "double precision", null },
@@ -107,6 +107,7 @@ namespace EFCore.OpenEdge.FunctionalTests.Unit.TypeMapping
                 new object[] { "time", typeof(TimeSpan) },
                 new object[] { "datetime-tz", typeof(DateTimeOffset) },
                 new object[] { "datetimeoffset", typeof(DateTimeOffset) },
+                new object[] { "fixchar", typeof(string) },
                 
                 // Numeric types
                 new object[] { "decimal", typeof(decimal) },

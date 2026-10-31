@@ -10,6 +10,11 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
 {
     public class OpenEdgeSqlGenerator : QuerySqlGenerator
     {
+        // OpenEdge requires that SELECT statements always include a table, so we SELECT from the
+        // _File metaschema table that always exists, selecting a single row that we know will
+        // always exist; the metaschema record for the _File metaschema table itself.
+        private const string SingleRowFromClause = @"FROM pub.""_File"" ""oe_single_row"" WHERE ""oe_single_row"".""_File-Name"" = '_File'";
+
         private bool _existsConditional;
         private readonly IRelationalTypeMappingSource _typeMappingSource;
             
@@ -53,6 +58,27 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
             Sql.Append("?"); // This appears to be OpenEdge specific!
 
             return parameterExpression;
+        }
+
+        protected override Expression VisitSqlParameter(SqlParameterExpression sqlParameterExpression)
+        {
+            // Placeholders are positional, so a parameter that is used more than once needs one
+            // binding per placeholder. The base implementation binds it only the first time.
+            Sql.AddParameter(
+                sqlParameterExpression.InvariantName,
+                Dependencies.SqlGenerationHelper.GenerateParameterName(sqlParameterExpression.Name),
+                sqlParameterExpression.TypeMapping,
+                sqlParameterExpression.IsNullable);
+
+            Sql.Append(Dependencies.SqlGenerationHelper.GenerateParameterNamePlaceholder(sqlParameterExpression.Name));
+
+            return sqlParameterExpression;
+        }
+
+        protected override void GeneratePseudoFromClause()
+        {
+            Sql.AppendLine()
+                .Append(SingleRowFromClause);
         }
 
         protected override Expression VisitConditional(ConditionalExpression conditionalExpression)
@@ -154,15 +180,16 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
 
         protected override Expression VisitSqlFunction(SqlFunctionExpression sqlFunctionExpression)
         {
-            // Handle COUNT(*) to cast result to INT to match EF Core expectations. This ensures that 'COUNT(*)' function is wrapped inside 'CAST (... AS INT)'.
-            // The generated SQL will now be 'CAST(COUNT(*) AS INT)'
-            // if (string.Equals(sqlFunctionExpression.Name, "COUNT", StringComparison.OrdinalIgnoreCase))
-            // {
-            //     Sql.Append("CAST(");
-            //     base.VisitSqlFunction(sqlFunctionExpression);
-            //     Sql.Append(" AS INT)");
-            //     return sqlFunctionExpression;
-            // }
+            // OpenEdge returns COUNT as a 64-bit value, but EF Core reads Count() as an int.
+            // LongCount() is left alone, because EF Core reads it as a long.
+            if (sqlFunctionExpression.Type == typeof(int)
+                && string.Equals(sqlFunctionExpression.Name, "COUNT", StringComparison.OrdinalIgnoreCase))
+            {
+                Sql.Append("CAST(");
+                base.VisitSqlFunction(sqlFunctionExpression);
+                Sql.Append(" AS INT)");
+                return sqlFunctionExpression;
+            }
             
             return base.VisitSqlFunction(sqlFunctionExpression);
         }
@@ -192,7 +219,11 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
                 
                 // If it's already a comparison expression, use it as-is
                 // Otherwise, we need to compare it with 1 (for boolean columns stored as integers)
-                if (projectionExpression.Expression is SqlBinaryExpression)
+                if (TryGenerateExistsCondition(projectionExpression.Expression))
+                {
+                    // The condition is complete, for example the result of Any() or All()
+                }
+                else if (projectionExpression.Expression is SqlBinaryExpression)
                 {
                     Visit(projectionExpression.Expression);
                 }
@@ -216,6 +247,31 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
             
             // For non-boolean expressions, use the base implementation
             return base.VisitProjection(projectionExpression);
+        }
+
+        /// <summary>
+        /// OpenEdge does not support WHEN EXISTS, only WHERE EXISTS, so an EXISTS inside a CASE is moved
+        /// into a single-row subquery: WHEN (SELECT 1 FROM ... WHERE ... AND EXISTS (...)) = 1
+        /// </summary>
+        private bool TryGenerateExistsCondition(SqlExpression expression)
+        {
+            var (existsExpression, negated) = expression switch
+            {
+                ExistsExpression exists => (exists, false),
+                SqlUnaryExpression { OperatorType: ExpressionType.Not, Operand: ExistsExpression exists } => (exists, true),
+                _ => (null, false)
+            };
+
+            if (existsExpression == null)
+            {
+                return false;
+            }
+
+            Sql.Append("(SELECT 1 ").Append(SingleRowFromClause).Append(" AND ");
+            GenerateExists(existsExpression, negated);
+            Sql.Append(") = 1");
+
+            return true;
         }
     }
 }

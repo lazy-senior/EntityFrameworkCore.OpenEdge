@@ -2,7 +2,7 @@
 [![NuGet Version](https://img.shields.io/nuget/v/EntityFrameworkCore.OpenEdge)](https://www.nuget.org/packages/EntityFrameworkCore.OpenEdge)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-EntityFrameworkCore.OpenEdge is an **Entity Framework Core 9 provider** that lets you target Progress OpenEdge databases via **ODBC**.
+EntityFrameworkCore.OpenEdge is an **Entity Framework Core 10 provider** that lets you target Progress OpenEdge databases via **ODBC**.
 
 > ⚠️ **Status:** This library is under active development. While it is already used in production scenarios, you may still encounter bugs or missing edge-cases. Please [open an issue](https://github.com/alexwiese/EntityFrameworkCore.OpenEdge/issues) if you run into problems.
 
@@ -12,7 +12,7 @@ EntityFrameworkCore.OpenEdge is an **Entity Framework Core 9 provider** that let
 
 ### Install
 ```bash
-dotnet add package EntityFrameworkCore.OpenEdge --version 9.0.7
+dotnet add package EntityFrameworkCore.OpenEdge --version 10.0.0
 ```
 
 ### DSN-less connection
@@ -41,7 +41,7 @@ Scaffold-DbContext "dsn=MyDb;password=mypassword" EntityFrameworkCore.OpenEdge -
 
 ---
 
-## Feature Matrix (EF Core 9)
+## Feature Matrix (EF Core 10)
 
 | Area                     | Status | Notes                                                                    |
 |--------------------------|:------:|---------------------------------------------------------------------------|

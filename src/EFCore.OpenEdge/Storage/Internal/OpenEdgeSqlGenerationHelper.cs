@@ -13,9 +13,16 @@ namespace EntityFrameworkCore.OpenEdge.Storage.Internal
 
         public override string StatementTerminator { get; } = "";
 
-        public override string GenerateParameterName(string name)
+        // Only the placeholder in the command text is positional. Parameter names must stay unique,
+        // because EF Core loops over GenerateParameterName until it finds an unused name.
+        public override string GenerateParameterNamePlaceholder(string name)
         {
-            return "?"; // Always return ? for positional parameters
+            return "?";
+        }
+
+        public override void GenerateParameterNamePlaceholder(StringBuilder builder, string name)
+        {
+            builder.Append('?');
         }
 
         public override void DelimitIdentifier(StringBuilder builder, string identifier)

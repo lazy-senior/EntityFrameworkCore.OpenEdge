@@ -91,7 +91,7 @@ namespace EFCore.OpenEdge.FunctionalTests.Unit.Design
         {
             var modelFactory = new Mock<IDatabaseModelFactory>();
             modelFactory
-                .Setup(f => f.Create(It.IsAny<string>(), It.IsAny<DatabaseModelFactoryOptions>()))
+                .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DatabaseModelFactoryOptions>()))
                 .Returns(CreateCustomerDatabaseModel());
 
             using var serviceProvider = BuildDesignTimeServiceProvider(

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>EntityFrameworkCore.OpenEdge</AssemblyName>
     <RootNamespace>EntityFrameworkCore.OpenEdge</RootNamespace>
     <LangVersion>latest</LangVersion>
@@ -17,8 +17,17 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>9.0.7</Version>
+    <Version>10.0.0</Version>
     <PackageReleaseNotes>
+      - Version 10.0.0
+        - Updated to .NET 10 and EF Core 10
+        - Fixed scaffolding failing with a service registration error
+        - Fixed Count() failing with an invalid cast
+        - Fixed Any() and All() generating invalid SQL
+        - Fixed queries failing when a parameter is used more than once
+        - Fixed DateTimeOffset parameters failing for datetime-tz and timestamp_timezone columns
+        - Added the missing mapping for fixchar columns
+
       - Version 9.0.7
         - Extended support for datetimezone type
         - Fixed inline fetch/offset statements being cached incorrectly
@@ -49,9 +58,9 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.6" />
-    <PackageReference Include="System.Data.Odbc" Version="9.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
+    <PackageReference Include="System.Data.Odbc" Version="10.0.14" />
   </ItemGroup>
 
 </Project>

@@ -43,8 +43,9 @@ namespace EntityFrameworkCore.OpenEdge.Storage.Internal.Mapping
          *   4) ODBC driver sends properly formatted value to OpenEdge
          */
         private readonly DateTimeTypeMapping _datetime = new DateTimeTypeMapping("datetime", DbType.DateTime);
-        private readonly DateTimeOffsetTypeMapping _datetimeOffset = new DateTimeOffsetTypeMapping("datetime-tz", DbType.DateTimeOffset);
-        private readonly OpenEdgeTimestampTimezoneTypeMapping _timestampTimezone = new OpenEdgeTimestampTimezoneTypeMapping("timestamp_timezone", DbType.DateTimeOffset);
+        // datetime-tz is the ABL name of timestamp_timezone. ODBC has no DbType.DateTimeOffset, so values travel as strings.
+        private readonly OpenEdgeTimestampTimezoneTypeMapping _datetimeOffset = new OpenEdgeTimestampTimezoneTypeMapping("datetime-tz", DbType.String);
+        private readonly OpenEdgeTimestampTimezoneTypeMapping _timestampTimezone = new OpenEdgeTimestampTimezoneTypeMapping("timestamp_timezone", DbType.String);
         private readonly DateTimeTypeMapping _timeStamp = new DateTimeTypeMapping("timestamp", DbType.DateTime);
         private readonly TimeSpanTypeMapping _time = new TimeSpanTypeMapping("time", DbType.Time);
         private readonly OpenEdgeDateOnlyTypeMapping _dateOnly = new OpenEdgeDateOnlyTypeMapping("date", DbType.Date);
@@ -108,6 +109,7 @@ namespace EntityFrameworkCore.OpenEdge.Storage.Internal.Mapping
                     { "character varying", _char },
                     { "character", _char },
                     { "clob", _char },
+                    { "fixchar", _char },
                     { "date", _dateOnly },
                     { "datetime", _datetime },
                     { "datetime2", _datetime },
