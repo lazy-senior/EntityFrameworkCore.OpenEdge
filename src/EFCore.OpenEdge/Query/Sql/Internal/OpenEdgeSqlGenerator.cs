@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Linq.Expressions;
+using EntityFrameworkCore.OpenEdge.Diagnostics;
 using EntityFrameworkCore.OpenEdge.Extensions;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
@@ -73,6 +74,56 @@ namespace EntityFrameworkCore.OpenEdge.Query.Sql.Internal
             Sql.Append(Dependencies.SqlGenerationHelper.GenerateParameterNamePlaceholder(sqlParameterExpression.Name));
 
             return sqlParameterExpression;
+        }
+
+        protected override Expression VisitSqlBinary(SqlBinaryExpression sqlBinaryExpression)
+        {
+            if (sqlBinaryExpression.OperatorType is ExpressionType.Equal or ExpressionType.NotEqual
+                or ExpressionType.LessThan or ExpressionType.LessThanOrEqual
+                or ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual)
+            {
+                ThrowIfLargeObject(sqlBinaryExpression.Left, "a comparison");
+                ThrowIfLargeObject(sqlBinaryExpression.Right, "a comparison");
+            }
+
+            return base.VisitSqlBinary(sqlBinaryExpression);
+        }
+
+        protected override void GenerateIn(InExpression inExpression, bool negated)
+        {
+            ThrowIfLargeObject(inExpression.Item, "an IN list");
+
+            base.GenerateIn(inExpression, negated);
+        }
+
+        protected override void GenerateLike(LikeExpression likeExpression, bool negated)
+        {
+            ThrowIfLargeObject(likeExpression.Match, "LIKE");
+
+            base.GenerateLike(likeExpression, negated);
+        }
+
+        protected override Expression VisitOrdering(OrderingExpression orderingExpression)
+        {
+            ThrowIfLargeObject(orderingExpression.Expression, "ORDER BY");
+
+            return base.VisitOrdering(orderingExpression);
+        }
+
+        // Comparing a CLOB or BLOB is rejected by OpenEdge, and with a parameter it crashes the
+        // OpenEdge SQL server process, so these queries must never be sent.
+        private static void ThrowIfLargeObject(SqlExpression expression, string operation)
+        {
+            var storeType = expression.TypeMapping?.StoreTypeNameBase;
+            if (storeType != null
+                && (storeType.Equals("clob", StringComparison.OrdinalIgnoreCase)
+                    || storeType.Equals("blob", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new OpenEdgeLargeObjectOperationException(
+                    (expression as ColumnExpression)?.Name,
+                    storeType,
+                    operation);
+            }
         }
 
         protected override void GeneratePseudoFromClause()

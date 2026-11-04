@@ -21,6 +21,7 @@
     <PackageReleaseNotes>
       - Version 10.0.0
         - Updated to .NET 10 and EF Core 10
+        - Queries that compare, sort or LIKE-match clob and blob columns now throw OpenEdgeLargeObjectOperationException before they are sent
         - Fixed scaffolding failing with a service registration error
         - Fixed Count() failing with an invalid cast
         - Fixed Any() and All() generating invalid SQL

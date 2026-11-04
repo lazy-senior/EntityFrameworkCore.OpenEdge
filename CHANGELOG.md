@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [V10.0.0] - 10-30-2026
 
+### Added
+- `OpenEdgeLargeObjectOperationException`: queries that compare, sort, `IN`-filter or `LIKE`-match a `clob` or `blob` column now fail before they are sent. OpenEdge rejects these operations, and with a parameter they can crash the OpenEdge SQL server
+
 ### Changed
 - Updated to .NET 10 and EF Core 10
 - `Contains` on a collection now generates `IN (?, ?, ?)` with parameters instead of inlined constants, following the EF Core 10 default

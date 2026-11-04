@@ -60,6 +60,7 @@ Scaffold-DbContext "dsn=MyDb;password=mypassword" EntityFrameworkCore.OpenEdge -
 
 * **Primary keys** – OpenEdge doesn’t enforce uniqueness. Use `rowid` or define composite keys
 * **No batching / `RETURNING`** – each modification executes individually; concurrency detection is limited.
+* **Large objects (`clob`, `blob`)** – they can be read and checked for `null`, but not compared, sorted, used in `IN` or matched with `LIKE` (`Contains`, `StartsWith`, `EndsWith`). OpenEdge rejects this, and with a parameter it can crash the OpenEdge SQL server, so the provider throws `OpenEdgeLargeObjectOperationException` before the query is sent. The check relies on the column type, so map these columns with `HasColumnType("clob")` or `HasColumnType("blob")`, as scaffolding does.
 
 See the [OpenEdge SQL Reference](https://docs.progress.com/bundle/openedge-sql-reference/) for database specifics.
 
